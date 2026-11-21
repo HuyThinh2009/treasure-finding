@@ -1,7 +1,8 @@
 #include "function.cpp"
 
 int main(){
-    int n = 3;
+    int n,t;
+    cin>>n>>t;
     int arr[MAXN][MAXN];
     createMap(n,arr);
     for(int i=0;i<2*n+1;i++){

@@ -59,21 +59,50 @@ int main() {
     int inFront[10][4]={{0,1,0,1},{1,1,1,0},{1,0,1,1},{1,1,0,0},{0,1,1,1},{1,1,0,0},{0,1,1,1}};
     int priority[4]{1,2,3,4};
     // Print all boards
-    int correct_count =0;
-    for (int i = 0; i < 7; ++i) {
-        float big = 0;
-        int dir =0;
-        for(int j =0;j<4;j++){
-            float temp = 1/(countMount[i][j]+9999*inFront[i][j]+1.1*priority[j]+1);
-            if(temp>big){
-                dir = j+1;
-                big = temp;
+    int pre_correct =0;
+    float base[6]{};                    
+    for(float a = -1; a !=0 && a<=1 ; a+=0.1){
+    for(float b = -1; b !=0 && b<=1 ; b+=0.1){
+    for(float c = -1; c !=0 && c<=1 ; c+=0.1){
+    for(float d = -1; d !=0 && d<=1 ; d+=0.1){
+    for(float e = -1; e !=0 && e<=1 ; e+=0.1){
+    for(float f = -1; f !=0 && f<=1 ; f+=0.1){
+        int correct_count = 0;                
+        for (int i = 0; i < 7; ++i) {
+            float big = -10;
+            int dir =0;
+            for(int j =0;j<4;j++){
+                float mount = (static_cast<float>(countMount[i][j]))/3.0;   
+                float step = (static_cast<float>(inFront[i][j]));        
+                float priority = (static_cast<float> (j+1))/4;
+                float temp = 1.0/(a*(b+mount)+c*(d+step) + e*priority+f); 
+                if(temp>big){
+                    dir = j+1;
+                    big = temp;
+                }
+            }
+            if(dir==result[i]){
+                correct_count++;
             }
         }
-        if(dir==result[i]){
-             correct_count++;
+        if(correct_count>pre_correct){
+            pre_correct = correct_count;
+            base[0]=a;
+            base[1]=b;
+            base[2]=c;
+            base[3]=d;
+            base[4]=e;
+            base[5]=f;
         }
     }
-    cout<<correct_count;
+    }
+    }
+    }
+    }
+    }
+    for(int i=0;i<6;i++){
+        cout<<base[i]<<' ';
+    }
+    cout<<'\n'<<pre_correct;
     return 0;
 }

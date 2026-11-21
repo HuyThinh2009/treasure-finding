@@ -87,7 +87,31 @@ void createMap(int n, int& arr[][]){
     }
 };
 */
-
+void readBase(string fileName, int n, int base[]){
+    ifstream inputFile(fileName,MAX_LINE);
+    int r, c;
+    char star, colon;
+    float tmp[6];
+    while(inputFile >> r >> star >> c >> colon){
+        for(int k=0;k<6;k++){
+            inputFile >> tmp[k];
+        }
+        if(!inputFile) break;          
+        if(r == 2n+1 && c == 2n+1){
+            for(int k=0;k<6;k++){
+                base[k] = tmp[k];
+            }
+            break;
+        }
+    }
+    inputFile.close();
+};
+void writeBase(string fileName, int n, float base[]){
+    ofstream outputFile(fileName,MAX_LINE,ios::app);
+    outputFile<<n<<'*'<<n<<': '<<base[0]<<' '<<base[1]<<' '<<base[2]
+    <<' '<<base[3]<<' '<<base[4]<<' '<<base[5]<<'\n';
+    outputFile.close();
+};
 void createMap(int n, int arr[][MAXN]){
     srand(time(0));
     for(int i=0;i<2*n+1;i++){
@@ -109,16 +133,62 @@ void createMap(int n, int arr[][MAXN]){
         }
     }
     arr[n][n]=-1;
-}
-int return_direct(float mounts[], float steps[], float base[]){
+};
+int return_direct(int n, float mounts[], float steps[], float base[]){
     float temp{};
     int dir{};
-    for(int i=0;i<4;i++){
-        float cur = base[0]*(base[1]+mounts[i])+base[2]*(base[3]+steps[i])+base[4]*(i+1)+base[5];
+    for(float i=0;i<4;i++){
+        float step = steps[i]/n;
+        float mount = mounts[i]/((2*n+1)*n);
+        float cur = base[0]*(base[1]+mount[i])+base[2]*(base[3]+step[i])+base[4]*((i+1)/5)+ base[5];
         if(1/cur >temp){
             temp = 1/cur;
             dir = i+1;
         }
     }
     return dir;
-}
+};
+void returnBase(int n, int arr[][MAXN], float base[]){
+    int preBase[6]{};
+    readBase("formula.txt",n-1, preBase);
+    int pre_correct{};
+    for(float a = -1; a !=0 && a<=1 ; a+=0.1){
+    for(float b = -1; b !=0 && b<=1 ; b+=0.1){
+    for(float c = -1; c !=0 && c<=1 ; c+=0.1){
+    for(float d = -1; d !=0 && d<=1 ; d+=0.1){
+    for(float e = -1; e !=0 && e<=1 ; e+=0.1){
+    for(float f = -1; f !=0 && f<=1 ; f+=0.1){
+        int correct_count = 0;                
+        for (int i = 0; i < 7; ++i) {
+            float big = -10;
+            int dir =0;
+            for(int j =0;j<4;j++){
+                float mount = (static_cast<float>(countMount[i][j]))/3.0;   
+                float step = (static_cast<float>(inFront[i][j]));        
+                float priority = (static_cast<float> (j+1))/4;
+                float temp = 1.0/(a*(b+mount)+c*(d+step) + e*priority+f); 
+                if(temp>big){
+                    dir = j+1;
+                    big = temp;
+                }
+            }
+            if(dir==return_direct(n,mounts,steps)){
+                correct_count++;
+            }
+        }
+        if(correct_count>pre_correct){
+            pre_correct = correct_count;
+            base[0]=a;
+            base[1]=b;
+            base[2]=c;
+            base[3]=d;
+            base[4]=e;
+            base[5]=f;
+        }
+    }
+    }
+    }
+    }
+    }
+    }
+};
