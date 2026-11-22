@@ -5,5 +5,5 @@
     ["1", "0", "0"]
   ],
   "target": {"row": 10, "column": 10},
-  "result": [1, 2]
+  "result": [1]
 }
