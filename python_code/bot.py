@@ -19,7 +19,6 @@ class Bot(ABC):
         Must return exactly 4 scores (higher = better), same order as the inputs.
         """
 
-
     @abstractmethod
     def accuracy(self, result, path, all_scores):
         pass
@@ -54,18 +53,18 @@ class BasicBot(Bot):
                 state.view, direction_row, direction_column
             )
             direction_priority += 1
-            is_in_prev_positions =0
+            is_in_prev_positions = 0
             for i in range(len(state.prev_positions)):
                 if tuple(next_position) == state.prev_positions[i]:
-                    is_in_prev_positions +=1
-                    
+                    is_in_prev_positions += 1
+
             inputs.append(
                 [
                     int(is_wall),
                     (old_dist - new_dist) / old_dist if old_dist > new_dist else 0,
                     free_count,
                     (MAX_PRIORITY - direction_priority) / MAX_PRIORITY,
-                    (4 - is_in_prev_positions) /4,
+                    (4 - is_in_prev_positions) / 4,
                 ]
             )
         return inputs
@@ -110,14 +109,25 @@ class BasicBot(Bot):
             results.append(result)
         return results
 
-
     def accuracy(self, result, path, all_scores):
         right_move = []
+        right_move_index = []
         for i in range(len(path)):
-            if right_move and right_move[0] == (path[i]+2)%4:
+            if right_move and right_move[0] == (path[i] + 2) % 4:
                 right_move.pop(0)
+                right_move_index.pop(0)
             else:
                 right_move = [path[i]] + right_move
-        redundant_move = len(path)-len(right_move)
-        total_score = len(result)-0.1*redundant_move
-        return total_score
+                right_move_index = [i] + right_move_index
+        redundant_move = len(path) - len(right_move)
+
+        total_score = len(result) - 0.1 * redundant_move
+        for i in range(len(right_move_index)):
+            total_diff = 0
+            for j in range(4):
+                if j == right_move[i]:
+                    total_diff += abs(1 - all_scores[right_move_index[i]][j])
+                else:
+                    total_diff += all_scores[right_move_index[i]][j]
+            total_score -= total_diff / 4
+        return total_score * 100 / len(result)

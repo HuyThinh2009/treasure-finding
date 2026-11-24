@@ -79,7 +79,7 @@ def run_episode(bot, sample, max_steps=None):
         prev_positions.append(pos)
         pos = (pos[0] + dr, pos[1] + dc)
         path.append(direction)
-    
+
     return Episode(path, pos, reason, all_scores=all_scores)
 
 
@@ -128,7 +128,7 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
     exact = 0
     end_ok = 0
     reasons = Counter()
-
+    AVG_score = 0
     for name, sample in samples:
         ep = run_episode(bot, sample, max_steps)
         expected = sample["result"]
@@ -137,6 +137,8 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
         exact += is_exact
         end_ok += is_end
         reasons[ep.stop_reason] += 1
+        total_score = bot.accuracy(sample["result"], ep.path, ep.all_scores)
+        AVG_score += total_score
         if verbose:
             tag = "OK  " if is_exact else "FAIL"
             print(
@@ -144,19 +146,20 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
             )
             # for i, scores in enumerate(ep.all_scores):
             #     print(f"  step {i:02d}: scores={scores}")
+            print(f"Total score:       {total_score}")
         elif verbose_failed and not is_exact:
             print(
                 f"FAIL {name}  expected={expected}  got={ep.path}  stop={ep.stop_reason}"
             )
             # for i, scores in enumerate(ep.all_scores):
             #     print(f"  step {i:02d}: scores={scores}")
-
-            total_score = bot.accuracy(sample["result"], ep.path, ep.all_scores)
             print(f"Total score:       {total_score}")
 
+            
 
     print()
     print(f"Samples:           {total}")
+    print(f"Average score:     {AVG_score / total:.2f}")
     print(
         f"Exact path match:  {exact}/{total} ({100 * exact / total:.2f}%)  <- accuracy"
     )
