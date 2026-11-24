@@ -41,10 +41,16 @@ def run_episode(bot, sample, max_steps=None):
     path = []
     reason = "max_steps"
     all_scores = []
+    prev_positions = []
     for step in range(max_steps):
-        vr, vc = n + pos[0], n + pos[1]
+        vr, vc = pos[0], pos[1]
         state = State(
-            view=view, position=pos, view_position=(vr, vc), target=target, step=step
+            view=view,
+            position=pos,
+            view_position=(vr, vc),
+            target=target,
+            step=step,
+            prev_positions=prev_positions,
         )
 
         inputs = bot.build_inputs(state)
@@ -70,9 +76,10 @@ def run_episode(bot, sample, max_steps=None):
         if view[nr][nc] == "1":
             reason = "hit_wall"  # blocked by a wall, the bot can't continue
             break
+        prev_positions.append(pos)
         pos = (pos[0] + dr, pos[1] + dc)
         path.append(direction)
-
+    
     return Episode(path, pos, reason, all_scores=all_scores)
 
 
@@ -135,14 +142,18 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
             print(
                 f"{tag} {name}  expected={expected}  got={ep.path}  stop={ep.stop_reason}"
             )
-            for i, scores in enumerate(ep.all_scores):
-                print(f"  step {i:02d}: scores={scores}")
+            # for i, scores in enumerate(ep.all_scores):
+            #     print(f"  step {i:02d}: scores={scores}")
         elif verbose_failed and not is_exact:
             print(
                 f"FAIL {name}  expected={expected}  got={ep.path}  stop={ep.stop_reason}"
             )
-            for i, scores in enumerate(ep.all_scores):
-                print(f"  step {i:02d}: scores={scores}")
+            # for i, scores in enumerate(ep.all_scores):
+            #     print(f"  step {i:02d}: scores={scores}")
+
+            total_score = bot.accuracy(sample["result"], ep.path, ep.all_scores)
+            print(f"Total score:       {total_score}")
+
 
     print()
     print(f"Samples:           {total}")

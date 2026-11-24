@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # 0 up, 1 right, 2 down, 3 left
-START = (0, 0)  # the player always starts at absolute (0, 0)
+START = (3, 3)  # the player always starts at absolute (0, 0)
 
 
 # --------------------------------------------------------------------------- #
@@ -17,6 +17,7 @@ class State:
     ]  # current (row, column) inside `view` (starts at the center)
     target: Tuple[int, int]  # absolute (row, column) of the target
     step: int  # number of moves made so far
+    prev_positions: List[List[int]] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
