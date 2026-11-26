@@ -16,6 +16,7 @@ Usage
   python evaluate_bot.py                                  # built-in BasicBot on ./samples
   python evaluate_bot.py -s samples -b my_model:MyBot     # your bot, class MyBot in my_model.py
   python evaluate_bot.py -s samples/sample_001.json -v    # one file, print every sample
+  python evaluate_bot.py --train                          # train weights then evaluate
 """
 
 import argparse
@@ -123,6 +124,16 @@ def load_bot(spec):
     return bot
 
 
+def score_bot(bot, samples, max_steps=None):
+    total_score = 0
+    for name, sample in samples:
+        ep = run_episode(bot, sample, max_steps)
+        expected = sample["result"]
+        is_end = ep.final_position == end_position(expected)
+        total_score += bot.accuracy(expected, ep.path, ep.all_scores, is_end, ep.stop_reason)
+    return total_score / len(samples)
+
+
 def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
     total = len(samples)
     exact = 0
@@ -137,7 +148,7 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
         exact += is_exact
         end_ok += is_end
         reasons[ep.stop_reason] += 1
-        total_score = bot.accuracy(sample["result"], ep.path, ep.all_scores)
+        total_score = bot.accuracy(sample["result"], ep.path, ep.all_scores, is_end, ep.stop_reason)
         AVG_score += total_score
         if verbose:
             tag = "OK  " if is_exact else "FAIL"
@@ -154,8 +165,6 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
             # for i, scores in enumerate(ep.all_scores):
             #     print(f"  step {i:02d}: scores={scores}")
             print(f"Total score:       {total_score}")
-
-            
 
     print()
     print(f"Samples:           {total}")
@@ -202,10 +211,27 @@ def main():
         action="store_true",
         help="print the result of every failed sample",
     )
+    ap.add_argument(
+        "--train", action="store_true", help="tune bot weights before evaluating"
+    )
+    ap.add_argument(
+        "--steps",
+        type=int,
+        default=5,
+        help="grid search steps per weight during training (default 5)",
+    )
     args = ap.parse_args()
 
     samples = load_samples(args.samples)
     bot = load_bot(args.bot)
+
+    if args.train:
+        best_args = bot.training(
+            lambda b: score_bot(b, samples, args.max_steps),
+            steps=args.steps,
+        )
+        print(f"Best ARGS: {best_args}")
+
     evaluate(bot, samples, args.max_steps, args.verbose, args.verbose_failed)
 
 

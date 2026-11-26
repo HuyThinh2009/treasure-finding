@@ -20,7 +20,10 @@ class Bot(ABC):
         """
 
     @abstractmethod
-    def accuracy(self, result, path, all_scores):
+    def accuracy(self, result, path, all_scores, is_end_the_same_cell, stop_reason="exit_view"):
+        pass
+
+    def training(self, evaluate_fn, steps=5):
         pass
 
 
@@ -109,7 +112,9 @@ class BasicBot(Bot):
             results.append(result)
         return results
 
-    def accuracy(self, result, path, all_scores):
+    def accuracy(self, result, path, all_scores, is_end_the_same_cell, stop_reason="exit_view"):
+        if stop_reason != "exit_view":
+            return -1.0
         right_move = []
         right_move_index = []
         for i in range(len(path)):
@@ -121,7 +126,7 @@ class BasicBot(Bot):
                 right_move_index = [i] + right_move_index
         redundant_move = len(path) - len(right_move)
 
-        total_score = len(result) - 0.1 * redundant_move
+        total_score = len(result) - 0.2 * redundant_move
         for i in range(len(right_move_index)):
             total_diff = 0
             for j in range(4):
@@ -130,4 +135,31 @@ class BasicBot(Bot):
                 else:
                     total_diff += all_scores[right_move_index[i]][j]
             total_score -= total_diff / 4
-        return total_score * 100 / len(result)
+        if right_move != result:
+            total_score -= len(result)/4
+        if is_end_the_same_cell:
+            total_score += len(result)/5
+        return total_score 
+
+    def training(self, evaluate_fn, steps=100, rounds=3):
+        best_args = list(self.ARGS)
+        best_score = evaluate_fn(self)
+        values = [i / steps for i in range(1, steps + 1)]
+
+        for _ in range(rounds):
+            improved = False
+            for idx in range(1, 5):  # tune a, b, c, d one at a time
+                for val in values:
+                    candidate = list(best_args)
+                    candidate[idx] = val
+                    self.ARGS = candidate
+                    score = evaluate_fn(self)
+                    if score > best_score:
+                        best_score = score
+                        best_args = candidate
+                        improved = True
+            if not improved:
+                break
+
+        self.ARGS = best_args
+        return best_args
