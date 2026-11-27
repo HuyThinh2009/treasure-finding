@@ -16,6 +16,7 @@ Usage
   python evaluate_bot.py                                  # built-in BasicBot on ./samples
   python evaluate_bot.py -s samples -b my_model:MyBot     # your bot, class MyBot in my_model.py
   python evaluate_bot.py -s samples/sample_001.json -v    # one file, print every sample
+  python evaluate_bot.py --train                          # train weights then evaluate
 """
 
 import argparse
@@ -41,10 +42,16 @@ def run_episode(bot, sample, max_steps=None):
     path = []
     reason = "max_steps"
     all_scores = []
+    prev_positions = []
     for step in range(max_steps):
-        vr, vc = n + pos[0], n + pos[1]
+        vr, vc = pos[0], pos[1]
         state = State(
-            view=view, position=pos, view_position=(vr, vc), target=target, step=step
+            view=view,
+            position=pos,
+            view_position=(vr, vc),
+            target=target,
+            step=step,
+            prev_positions=prev_positions,
         )
 
         inputs = bot.build_inputs(state)
@@ -70,6 +77,7 @@ def run_episode(bot, sample, max_steps=None):
         if view[nr][nc] == "1":
             reason = "hit_wall"  # blocked by a wall, the bot can't continue
             break
+        prev_positions.append(pos)
         pos = (pos[0] + dr, pos[1] + dc)
         path.append(direction)
 
@@ -116,12 +124,22 @@ def load_bot(spec):
     return bot
 
 
+def score_bot(bot, samples, max_steps=None):
+    total_score = 0
+    for name, sample in samples:
+        ep = run_episode(bot, sample, max_steps)
+        expected = sample["result"]
+        is_end = ep.final_position == end_position(expected)
+        total_score += bot.accuracy(expected, ep.path, ep.all_scores, is_end, ep.stop_reason)
+    return total_score / len(samples)
+
+
 def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
     total = len(samples)
     exact = 0
     end_ok = 0
     reasons = Counter()
-
+    AVG_score = 0
     for name, sample in samples:
         ep = run_episode(bot, sample, max_steps)
         expected = sample["result"]
@@ -130,22 +148,27 @@ def evaluate(bot, samples, max_steps=None, verbose=False, verbose_failed=False):
         exact += is_exact
         end_ok += is_end
         reasons[ep.stop_reason] += 1
+        total_score = bot.accuracy(sample["result"], ep.path, ep.all_scores, is_end, ep.stop_reason)
+        AVG_score += total_score
         if verbose:
             tag = "OK  " if is_exact else "FAIL"
             print(
                 f"{tag} {name}  expected={expected}  got={ep.path}  stop={ep.stop_reason}"
             )
-            for i, scores in enumerate(ep.all_scores):
-                print(f"  step {i:02d}: scores={scores}")
+            # for i, scores in enumerate(ep.all_scores):
+            #     print(f"  step {i:02d}: scores={scores}")
+            print(f"Total score:       {total_score}")
         elif verbose_failed and not is_exact:
             print(
                 f"FAIL {name}  expected={expected}  got={ep.path}  stop={ep.stop_reason}"
             )
-            for i, scores in enumerate(ep.all_scores):
-                print(f"  step {i:02d}: scores={scores}")
+            # for i, scores in enumerate(ep.all_scores):
+            #     print(f"  step {i:02d}: scores={scores}")
+            print(f"Total score:       {total_score}")
 
     print()
     print(f"Samples:           {total}")
+    print(f"Average score:     {AVG_score / total:.2f}")
     print(
         f"Exact path match:  {exact}/{total} ({100 * exact / total:.2f}%)  <- accuracy"
     )
@@ -188,10 +211,27 @@ def main():
         action="store_true",
         help="print the result of every failed sample",
     )
+    ap.add_argument(
+        "--train", action="store_true", help="tune bot weights before evaluating"
+    )
+    ap.add_argument(
+        "--steps",
+        type=int,
+        default=5,
+        help="grid search steps per weight during training (default 5)",
+    )
     args = ap.parse_args()
 
     samples = load_samples(args.samples)
     bot = load_bot(args.bot)
+
+    if args.train:
+        best_args = bot.training(
+            lambda b: score_bot(b, samples, args.max_steps),
+            steps=args.steps,
+        )
+        print(f"Best ARGS: {best_args}")
+
     evaluate(bot, samples, args.max_steps, args.verbose, args.verbose_failed)
 
 
